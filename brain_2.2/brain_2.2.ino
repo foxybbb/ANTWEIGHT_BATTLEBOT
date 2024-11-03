@@ -1,6 +1,5 @@
 #include "variables.h"
 #include "configuration.h"
-
 #include <esp_task_wdt.h>
 
 void setup() {

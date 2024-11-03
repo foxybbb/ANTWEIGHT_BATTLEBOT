@@ -1,3 +1,8 @@
+
+
+#include <esp_wifi.h>    // Ensure this is included for Wi-Fi-related types
+#include <esp_system.h>  // General ESP32 system functions (if needed)
+#include <esp_now.h>  // Include this for ESP-NOW functions and types
 // general
 enum TX_STATES {
   IDLE,

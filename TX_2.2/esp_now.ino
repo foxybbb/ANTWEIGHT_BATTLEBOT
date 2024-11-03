@@ -1,4 +1,5 @@
 
+
 void promiscuous_rx_cb(void *buf, wifi_promiscuous_pkt_type_t type) {
   // All espnow traffic uses action frames which are a subtype of the mgmnt frames so filter out everything else.
   if (type != WIFI_PKT_MGMT)
@@ -185,33 +186,35 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
     }
   }
 }
+void OnDataRecv(const esp_now_recv_info* info, const uint8_t *incomingData, int len) {
+  // Extract the MAC address from `info`
+  uint8_t mac[6];
+  memcpy(mac, info->src_addr, 6);
 
-void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
+  // Copy the incoming data into txData
   memcpy(&txData, incomingData, sizeof(txData));
   last_receive = millis();
-  
-  if(state == BINDING){
-    if(received_binding_packet()){
+
+  if (state == BINDING) {
+    if (received_binding_packet()) {
       int index = findMacAddress(mac);
-      
-      if(index == -1){
-        if(rssi_list_index < rssi_list_size){
+
+      if (index == -1) {
+        if (rssi_list_index < rssi_list_size) {
+          // Copy the MAC address into the RSSI list
           for (int i = 0; i < 6; i++) {
             rssi_list[rssi_list_index].mac_address[i] = mac[i];
           }
-          // memcpy(rssi_list[rssi_list_index].mac_address, mac, sizeof(mac));
           rssi_list[rssi_list_index].rssi = rssi_last;
           rssi_list[rssi_list_index].received_packets = 1;
           rssi_list_index++;
-        }else{
+        } else {
           Serial.println("RSSI LIST FULL");
-          while (true)
-          {
+          while (true) {
             delay(1000);
           }
-          
         }
-      }else{
+      } else {
         for (int i = 0; i < 6; i++) {
           rssi_list[index].mac_address[i] = mac[i];
         }
@@ -219,17 +222,13 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
         rssi_list[index].received_packets++;
       }
     }
-  }else if(state == SENDING){
+  } else if (state == SENDING) {
     new_rx_data = true;
     memcpy(&rxData, incomingData, sizeof(rxData));
-    // Serial.print("Bytes received: ");
-    // Serial.println(len);
-    // Serial.print("v: ");
-    // Serial.println(rxData.volatage);
-    // Serial.println();
-
+    // Serial debugging statements can be added as needed
   }
 }
+
 
 void init_esp_now(){
   WiFi.mode(WIFI_STA);

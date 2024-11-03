@@ -119,53 +119,63 @@ bool rx_packet_ok() {
     return false;
   }
 }
-
-void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-  if(binding_mode){
+void OnDataRecv(const esp_now_recv_info* info, const uint8_t *incomingData, int len) {
+  if (binding_mode) {
+    // Copy incoming data into the rxData structure
     memcpy(&rxData, incomingData, sizeof(rxData));
 
-    if(received_binding_confirmed_packet()){
+    if (received_binding_confirmed_packet()) {
       binding_mode = false;
       sending_ch = rxData.ch10;
       change_channel(sending_ch);
-      memcpy(peerInfo.peer_addr, mac, 6);
-      peerInfo.channel = sending_ch;  
-      peerInfo.encrypt = true;      
+
+      // Copy the source MAC address from the `info` structure
+      memcpy(peerInfo.peer_addr, info->src_addr, 6);
+      peerInfo.channel = sending_ch;
+      peerInfo.encrypt = true;
       memcpy(peerInfo.lmk, rxData.string, 16);
-      if (esp_now_add_peer(&peerInfo) != ESP_OK){
+
+      // Add the peer to the ESP-NOW peer list
+      if (esp_now_add_peer(&peerInfo) != ESP_OK) {
         Serial.println("Failed to add peer");
         return;
       }
 
+      // Update and save the EEPROM data
       EEPROM_DATA.binding_status = 1;
       EEPROM_DATA.bound_ch = sending_ch;
       memcpy(EEPROM_DATA.bound_mac, peerInfo.peer_addr, sizeof(EEPROM_DATA.bound_mac));
-			memcpy(EEPROM_DATA.encryption_key, rxData.string, sizeof(EEPROM_DATA.encryption_key));
+      memcpy(EEPROM_DATA.encryption_key, rxData.string, sizeof(EEPROM_DATA.encryption_key));
 
-      // Save the updated EEPROM data
       EEPROM.put(EEPROM_ADDRES, EEPROM_DATA);
       EEPROM.commit();
       return;
     }
-    // recieved binding confirmed packet, set password/channel
-    // add pear to list
+
+    // Processing binding confirmed packet is complete
     return;
-  }else{
+  } else {
+    // Perform early check on incoming data
     memcpy(&rxData_early_check, incomingData, sizeof(rxData_early_check));
-    if(rx_packet_ok()){
+
+    if (rx_packet_ok()) {
+      // Copy full data for processing
       memcpy(&rxData, incomingData, sizeof(rxData));
       last_receive = millis();
       new_rx_data = true;
       led_state = RX_RECEIVING;
-      int temp_setpoint = map(rxData.x_axis,0,4095,max_yaw_rate,-max_yaw_rate);
-      if(temp_setpoint > 6 || temp_setpoint < -6){
+
+      // Map and set the setpoint
+      int temp_setpoint = map(rxData.x_axis, 0, 4095, max_yaw_rate, -max_yaw_rate);
+      if (temp_setpoint > 6 || temp_setpoint < -6) {
         Setpoint = temp_setpoint;
-      }else{
+      } else {
         Setpoint = 0;
       }
     }
   }
 }
+
 
 void init_esp_now(){
   WiFi.mode(WIFI_STA);
